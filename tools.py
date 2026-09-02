@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from langchain_core.tools import tool
 from pydantic import BaseModel
@@ -80,8 +80,12 @@ def get_wikipedia_page(title: str) -> str:
         "titles": title,
         "format": "json",
     })
+    request = Request(
+        url,
+        headers={"User-Agent": "oci-langgraph-dac/1.0 (https://github.com/mgueury/oci-langgraph-dac)"},
+    )
     try:
-        with urlopen(url, timeout=10) as response:
+        with urlopen(request, timeout=10) as response:
             pages = json.load(response)["query"]["pages"]
         page = next(iter(pages.values()))
         if "missing" in page:
