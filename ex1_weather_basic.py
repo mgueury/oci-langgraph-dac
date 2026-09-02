@@ -55,6 +55,7 @@ tool_list = [get_current_weather]
 model = ChatOCIGenAI(
     auth_type=os.getenv("AUTH_TYPE", "API_KEY"),
     model_id=os.environ["GENAI_MODEL"],
+    provider="generic",
     service_endpoint=f"https://inference.generativeai.{os.environ['REGION']}.oci.oraclecloud.com",
     compartment_id=os.environ["COMPARTMENT_OCID"],
     model_kwargs={"temperature": 0},
