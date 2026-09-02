@@ -1,10 +1,16 @@
 # LangGraph OCI Agent Examples
 
-Small interactive examples using OCI Generative AI, LangGraph/LangChain, and
-shared tools. Each script loads credentials from `.env` and exits when you type
-`quit` or `exit`.
+Five small, interactive Python examples that combine OCI Generative AI with
+LangChain and LangGraph. They progress from an explicit tool graph to traced
+ReAct agents, a writer/reviewer team, and a holiday supervisor with subagents.
+
+Every program reads its local configuration from `.env`. Type `quit` or `exit`
+at a prompt to stop it.
 
 ## Setup
+
+Create an isolated environment, install the dependencies, and create your local
+configuration file:
 
 ```bash
 python3 -m venv .venv
@@ -14,90 +20,95 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` with your OCI configuration, OpenWeather key, and Langfuse settings:
+Edit `.env` with your OCI configuration and OpenWeather key:
 
 ```env
 GENAI_MODEL=xai.grok-4.20-0309-reasoning
 REGION=us-chicago-1
-COMPARTMENT_OCID=ocid1.compartment.oc1..your-compartment
+COMPARTMENT_OCID=ocid1.compartment.oc1..replace-me
 AUTH_TYPE=API_KEY
 TIMEZONE=Europe/Brussels
-OPENWEATHER_API_KEY=your-openweather-key
-LANGFUSE_PUBLIC_KEY=pk-lf-change
-LANGFUSE_SECRET_KEY=sk-lf-change
-LANGFUSE_BASE_URL=http://12.34.56.78
+OPENWEATHER_API_KEY=replace-me
 ```
 
-For `AUTH_TYPE=API_KEY`, configure the OCI SDK as usual in `~/.oci/config`.
-`TIMEZONE` must be an IANA timezone and is used by the holiday examples for
-relative dates such as “tomorrow.”
+With `AUTH_TYPE=API_KEY`, configure the OCI SDK in `~/.oci/config`. Other
+authentication types supported by `langchain-oci` can be used by changing
+`AUTH_TYPE`.
 
-Examples 3–5 also send their agent, model, and tool activity to Langfuse when
-all three `LANGFUSE_*` variables are set. Replace the placeholder keys with the
-keys for your Langfuse project.
+`TIMEZONE` must be an IANA timezone. The holiday example uses it to interpret
+relative dates such as “tomorrow” and “next Friday.”
 
-## Example 1: Basic weather graph
+`.env` and the holiday data file are ignored by Git; do not commit real keys.
 
-`ex1_weather_basic.py` shows the explicit LangGraph flow: model → tool → model.
+## Observability and terminal traces
+
+Examples 3–5 print their execution flow as they run:
+
+- Agent and subagent labels are cyan.
+- Tool calls are yellow and include their arguments.
+- Successful tool results are green; error-like results are red.
+
+Set `NO_COLOR=1` to use plain terminal output.
+
+The same calls can be recorded in Langfuse. Add all three settings to `.env`:
+
+```env
+LANGFUSE_PUBLIC_KEY=pk-lf-xxx
+LANGFUSE_SECRET_KEY=sk-lf-xxx
+LANGFUSE_BASE_URL=http://your-langfuse-host:3000
+```
+
+Tracing is enabled only when all three settings are present. The shared trace
+helper attaches the Langfuse callback to each agent stream, so the dashboard
+shows model and tool activity in addition to the terminal trace.
+
+## Examples
+
+### 1. Explicit weather graph
+
+`ex1_weather_basic.py` builds the complete LangGraph flow explicitly:
+model → weather tool → model. The weather tool is defined in the same file.
 
 ```bash
 python3 ex1_weather_basic.py
 ```
 
-Try these sentences:
+Try: `What should I wear in Brussels today?`
 
-```text
-What should I wear in Brussels today?
-Should I take an umbrella in London, GB?
-What clothing do I need in Tokyo, JP right now?
-```
+### 2. ReAct weather agent
 
-## Example 2: ReAct weather agent
-
-`ex2_react_agent.py` provides the same weather advice with the prebuilt ReAct
-agent loop instead of manually defining graph nodes and edges.
+`ex2_react_agent.py` uses LangChain’s prebuilt agent loop with the reusable
+weather tool from `tools.py`.
 
 ```bash
 python3 ex2_react_agent.py
 ```
 
-Try these sentences:
+Try: `Should I take an umbrella in London, GB?`
 
-```text
-What should I wear in Paris, FR?
-Is it cold enough for a coat in New York, US?
-What footwear should I use in Singapore?
-```
+### 3. Traced ReAct weather agent
 
-## Example 3: ReAct agent with shared tools
-
-`ex3_react_agent.py` is the ReAct version that imports `get_current_weather`
-from `tools.py`, demonstrating reusable tool modules.
+`ex3_react_agent.py` is the same weather assistant with readable terminal and
+optional Langfuse tracing.
 
 ```bash
 python3 ex3_react_agent.py
 ```
 
-Try these sentences:
+Try: `What should I wear in Brussels, BE today?`
 
-```text
-What should I wear in Brussels, BE today?
-Do I need sunglasses in Madrid, ES?
-How should I dress for the weather in Sydney, AU?
-```
+### 4. Wikipedia writer and reviewer
 
-## Example 4: Wikipedia writer and reviewer
-
-`ex4_reflection.py` runs a writer agent and a reviewer agent. The writer uses an
-English Wikipedia page as its source; the reviewer checks grammar and structure.
-Only an approved Markdown document is displayed. The writer can revise it up to
-three times.
+`ex4_reflection.py` runs two agents. The writer retrieves the requested English
+Wikipedia page and creates a concise Markdown document. The reviewer checks its
+grammar and structure, and can request up to three revisions. Writer activity,
+Wikipedia calls, and reviewer phases are traced.
 
 ```bash
 python3 ex4_reflection.py
 ```
 
-Enter a Wikipedia page title at the prompt:
+Enter a page title, for example:
 
 ```text
 Ada Lovelace
@@ -105,18 +116,20 @@ Artificial intelligence
 Brussels
 ```
 
-## Example 5: Holiday supervisor
+The writer only uses facts returned by the Wikipedia tool. If Wikipedia is
+unreachable, the trace displays the tool error.
 
-`ex5_supervisor.py` coordinates two specialist agents: one answers HR FAQ
-questions and the other proposes and confirms holiday bookings. Confirmed
-bookings are stored in `holiday.json`; the balance starts at 25 weekdays each
-year.
+### 5. Holiday supervisor
+
+`ex5_supervisor.py` coordinates an HR FAQ specialist and a holiday-booking
+specialist. The supervisor delegates requests to the appropriate subagent and
+traces that delegation along with the nested tool calls.
 
 ```bash
 python3 ex5_supervisor.py
 ```
 
-Try these sentences in order:
+Try this sequence:
 
 ```text
 How many annual leave days do I have?
@@ -127,11 +140,26 @@ What is my holiday balance?
 What are my current holidays?
 ```
 
-The booking agent first shows the resolved dates. It writes to `holiday.json`
-only after you explicitly confirm the proposal.
+Booking is deliberately two-step: the specialist first proposes exact dates,
+then writes a confirmed booking to `holiday.json` only after `Confirm`. Confirmed
+bookings remain pending manager approval. The annual allowance is 25 weekdays.
 
-## Shared tools
+The supervisor also has `send_mail`, a dummy tool that returns a confirmation
+but never delivers an email.
 
-`tools.py` holds reusable tools for weather, Wikipedia content, HR FAQ matching,
-holiday date normalization, booking storage, and holiday-balance calculation.
-`tools_model_init(model)` initializes its LLM-backed tools from the OCI model.
+## Shared modules
+
+`tools.py` provides the reusable weather, Wikipedia, HR, and holiday tools.
+`tools_model_init(model)` supplies the OCI model to the HR and holiday-date
+tools that require it.
+
+`common.py` contains terminal formatting, the Langfuse callback integration,
+and the compatibility handling for nullable OCI token-usage details.
+
+## Tests
+
+Run the test suite from the activated virtual environment:
+
+```bash
+python -m unittest discover -s tests
+```
