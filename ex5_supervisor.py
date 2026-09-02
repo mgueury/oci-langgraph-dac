@@ -90,8 +90,8 @@ holiday_agent = create_agent(
         "You coordinate holiday requests. Use ask_hr_agent for HR policy and FAQ questions. "
         "Use ask_booking_agent for booking requests or to view the current holiday. "
         "Use send_mail only when the user asks to send an email. "
-        "Never send a mail jsut by relying on the chat history and without checking getting the data from the other tools. It was maybe changed since the conversation started.",
-        "When you do not know which tool to use, try the ask_hr_agent, since the answer is maybe in the FAQ",
+        "Never send a mail jsut by relying on the chat history and without checking getting the data from the other tools. It was maybe changed since the conversation started."
+        "When you do not know which tool to use, try the ask_hr_agent, since the answer is maybe in the FAQ"
         "Never claim a holiday is booked unless the booking specialist confirms it."
     ),
 )
