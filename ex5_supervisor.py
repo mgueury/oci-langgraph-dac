@@ -1,4 +1,4 @@
-"""Holiday coordinator with HR FAQ and holiday-booking ReAct subagents."""
+"""Holiday Supervisor with HR FAQ and holiday-booking ReAct subagents."""
 
 import os
 import common
@@ -79,7 +79,7 @@ def ask_booking_agent(request: str) -> str:
 # -- send_mail ---------------------------------------------------------------
 @tool
 def send_mail(recipient: str, subject: str, body: str) -> str:
-    """Pretend to send an email. This dummy tool does not deliver any email."""
+    """Send an email."""
     return f"Dummy email sent to {recipient} with subject: {subject}"
 
 
@@ -89,19 +89,20 @@ holiday_agent = create_agent(
     system_prompt=(
         "You coordinate holiday requests. Use ask_hr_agent for HR policy and FAQ questions. "
         "Use ask_booking_agent for booking requests or to view the current holiday. "
-        "Use send_mail only when the user asks to send an email; it is a dummy tool and "
-        "does not deliver real email. "
+        "Use send_mail only when the user asks to send an email. "
+        "Never send a mail jsut by relying on the chat history and without checking getting the data from the other tools. It was maybe changed since the conversation started.",
+        "When you do not know which tool to use, try the ask_hr_agent, since the answer is maybe in the FAQ",
         "Never claim a holiday is booked unless the booking specialist confirms it."
     ),
 )
 
-print("Holiday Coordinator (type 'quit' to exit)")
+print("Holiday Supervisor (type 'quit' to exit)")
 conversation = []
 while (question := input("You: ").strip()).lower() not in {"quit", "exit"}:
     if question:
         conversation = common.trace_agent(
             holiday_agent,
             {"messages": [*conversation, HumanMessage(question)]},
-            label="Holiday coordinator",
+            label="Holiday Supervisor",
         )["messages"]
         print(f"Agent: {conversation[-1].content}\n")
